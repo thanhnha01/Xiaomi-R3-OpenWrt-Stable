@@ -53,10 +53,7 @@ jobs:
       run: |
         git clone --depth $REPO_DEPTH --branch $REPO_BRANCH $REPO_URL openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-
-    - name: Cache OpenWrt
-  uses: actions/cache@v4
-  env:
+        
     - name: Cache OpenWrt
   uses: actions/cache@v4
   with:
