@@ -55,7 +55,7 @@ jobs:
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
     - name: Cache OpenWrt
-      uses: actions/cache@v4
+      uses: actions/cache@v2
       env:
         cache-name: cache-openwrt
       with:
