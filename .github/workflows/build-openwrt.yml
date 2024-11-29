@@ -14,8 +14,7 @@ env:
   FILES_PATH: files
   PATCHES_PATH: patches
   UPLOAD_RELEASE: true
-  TZ: UTC
-
+  TZ: Asia/Ho_Chi_Minh
 jobs:
   build:
     runs-on: ubuntu-latest
