@@ -91,11 +91,24 @@ jobs:
         [ -f $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config && echo 'Custom config loaded!' || echo 'No custom config!'
 
     - name: Apply patches
-      run: |
-        [ -d $PATCHES_PATH ] && mv $PATCHES_PATH openwrt/$PATCHES_PATH
-        cd openwrt
-        [ -d $PATCHES_PATH ] && for FILE in $(ls $PATCHES_PATH | grep .patch); do git apply --check $PATCHES_PATH/$FILE; git apply $PATCHES_PATH/$FILE; done
-        git status -s
+  run: |
+    [ -d $PATCHES_PATH ] && mv $PATCHES_PATH openwrt/$PATCHES_PATH
+    cd openwrt
+    [ -d $PATCHES_PATH ] && for FILE in $(ls $PATCHES_PATH | grep .patch); do 
+      echo "Applying $FILE" 
+      git apply --check $PATCHES_PATH/$FILE
+      if [ $? -eq 0 ]; then
+        git apply $PATCHES_PATH/$FILE 
+        echo "$FILE applied successfully"
+      else
+        echo "Failed to apply $FILE"
+        git apply $PATCHES_PATH/$FILE || true
+        echo "Error details:"
+        git apply --check $PATCHES_PATH/$FILE || echo "Patch $FILE failed at this step."
+        exit 1 
+      fi 
+    done
+    git status -s
 
     - name: Download package
       id: package
