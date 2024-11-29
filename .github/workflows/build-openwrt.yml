@@ -1,5 +1,4 @@
 # Build OpenWrt using GitHub Actions
-
 name: Build OpenWrt
 
 on:
@@ -21,10 +20,10 @@ env:
   PATCHES_PATH: patches
   UPLOAD_RELEASE: true
   TZ: Asia/Ho_Chi_Minh
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
 
     steps:
     - name: Checkout
@@ -43,7 +42,6 @@ jobs:
         libncursesw5-dev libssl-dev python2 python2.7-dev python3 python3-dev \
         unzip wget python3-distutils python3-setuptools rsync subversion \
         swig time xsltproc zlib1g-dev
-
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
@@ -53,20 +51,18 @@ jobs:
       run: |
         git clone --depth $REPO_DEPTH --branch $REPO_BRANCH $REPO_URL openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
+
     - name: Cache OpenWrt
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-openwrt
+      uses: actions/cache@v4
       with:
         path: |
           openwrt/staging_dir
           openwrt/build_dir
           openwrt/dl
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.REPO_BRANCH }}
+        key: ${{ runner.os }}-build-cache-openwrt-${{ env.REPO_BRANCH }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-      
+          ${{ runner.os }}-build-cache-openwrt-
+
     - name: Check cache
       run: |
         [ -d openwrt/staging_dir ] && echo "Found staging_dir cache" || echo "No staging_dir cache"
@@ -91,24 +87,24 @@ jobs:
         [ -f $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config && echo 'Custom config loaded!' || echo 'No custom config!'
 
     - name: Apply patches
-  run: |
-    [ -d $PATCHES_PATH ] && mv $PATCHES_PATH openwrt/$PATCHES_PATH
-    cd openwrt
-    [ -d $PATCHES_PATH ] && for FILE in $(ls $PATCHES_PATH | grep .patch); do 
-      echo "Applying $FILE" 
-      git apply --check $PATCHES_PATH/$FILE
-      if [ $? -eq 0 ]; then
-        git apply $PATCHES_PATH/$FILE 
-        echo "$FILE applied successfully"
-      else
-        echo "Failed to apply $FILE"
-        git apply $PATCHES_PATH/$FILE || true
-        echo "Error details:"
-        git apply --check $PATCHES_PATH/$FILE || echo "Patch $FILE failed at this step."
-        exit 1 
-      fi 
-    done
-    git status -s
+      run: |
+        [ -d $PATCHES_PATH ] && mv $PATCHES_PATH openwrt/$PATCHES_PATH
+        cd openwrt
+        [ -d $PATCHES_PATH ] && for FILE in $(ls $PATCHES_PATH | grep .patch); do 
+          echo "Applying $FILE" 
+          git apply --check $PATCHES_PATH/$FILE
+          if [ $? -eq 0 ]; then
+            git apply $PATCHES_PATH/$FILE 
+            echo "$FILE applied successfully"
+          else
+            echo "Failed to apply $FILE"
+            git apply $PATCHES_PATH/$FILE || true
+            echo "Error details:"
+            git apply --check $PATCHES_PATH/$FILE || echo "Patch $FILE failed at this step."
+            exit 1 
+          fi 
+        done
+        git status -s
 
     - name: Download package
       id: package
@@ -118,7 +114,7 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-    
+
     - name: Read config target
       run: |
         cd openwrt
@@ -143,12 +139,12 @@ jobs:
     - name: Build PbBoot firmware
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-          cd openwrt/bin/targets/$ARCH_NAME/$CPU_NAME
-          dd if=/dev/zero bs=4M count=1 | tr "\000" "\377" > padded_kernel.bin && \
-          dd if=openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-kernel1.bin of=padded_kernel.bin conv=notrunc && \
-          cat padded_kernel.bin openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-rootfs0.bin > openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-pbboot.bin && \
-          rm -rf padded_kernel.bin && \
-          sha256sum -b openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-pbboot.bin >> sha256sums
+        cd openwrt/bin/targets/$ARCH_NAME/$CPU_NAME
+        dd if=/dev/zero bs=4M count=1 | tr "\000" "\377" > padded_kernel.bin && \
+        dd if=openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-kernel1.bin of=padded_kernel.bin conv=notrunc && \
+        cat padded_kernel.bin openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-rootfs0.bin > openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-pbboot.bin && \
+        rm -rf padded_kernel.bin && \
+        sha256sum -b openwrt-${ARCH_NAME}-${CPU_NAME}-${DEVICE_NAME}-squashfs-pbboot.bin >> sha256sums
 
     - name: Prepare release
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -158,7 +154,7 @@ jobs:
         echo "Date: $(date +"%Y-%m-%d_%H:%M")" >> release.txt
         echo "Arch: $ARCH_NAME" >> release.txt
         echo "CPU: $CPU_NAME" >> release.txt
-        echo "Deivce: $DEVICE_NAME" >> release.txt
+        echo "Device: $DEVICE_NAME" >> release.txt
         cd openwrt/bin/targets/$ARCH_NAME/$CPU_NAME
         rm -rf packages
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
