@@ -88,21 +88,26 @@ jobs:
 
     - name: Apply patches
   run: |
-    [ -d $PATCHES_PATH ] && mv $PATCHES_PATH openwrt/$PATCHES_PATH
+    if [ -d $PATCHES_PATH ]; then
+      mv $PATCHES_PATH openwrt/$PATCHES_PATH
+    fi
     cd openwrt
-    [ -d $PATCHES_PATH ] && for FILE in $(ls $PATCHES_PATH | grep .patch); do 
-      echo "Applying $FILE" 
-      git apply --check $PATCHES_PATH/$FILE
-      if [ $? -eq 0 ]; then
-        git apply $PATCHES_PATH/$FILE 
-        echo "$FILE applied successfully"
-      else
-        echo "Failed to apply $FILE"
-        echo "Error details:"
+    if [ -d $PATCHES_PATH ]; then
+      for FILE in $(ls $PATCHES_PATH | grep .patch); do 
+        echo "Applying $FILE" 
         git apply --check $PATCHES_PATH/$FILE
-        exit 1 
-      fi 
-    done
+        if [ $? -eq 0 ]; then
+          git apply $PATCHES_PATH/$FILE 
+          echo "$FILE applied successfully"
+        else
+          echo "Failed to apply $FILE"
+          echo "Error details:"
+          git apply --check $PATCHES_PATH/$FILE || echo "Patch $FILE failed at this step."
+          git apply $PATCHES_PATH/$FILE || true
+          exit 1 
+        fi 
+      done
+    fi
     git status -s
 
     - name: Download package
